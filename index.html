@@ -479,6 +479,20 @@ body.fx-armed footer.cols-in .f-rv{opacity:1;transform:translateY(0)}
   
 }
 </style>
+
+<style id="sig-fit-fix">
+/* ===== FOOTER SIGNATURE FIT-TO-WIDTH FIX (iPhone wrap bug) ===== */
+.f-sig{white-space:nowrap;width:100%;overflow:visible}
+.f-sig .sig-en,.f-sig .sig-ar{white-space:nowrap}
+.sig-en{display:block}
+@media (max-width:820px){
+  .f-sig-row{flex-direction:column;align-items:stretch;gap:10px}
+  .f-sig-row .f-top{order:-1;align-self:flex-end;width:84px;height:84px}
+  [dir="rtl"] .f-sig-row .f-top{align-self:flex-start}
+  .f-sig{letter-spacing:-.03em}
+  html[lang="ar"] .f-sig{letter-spacing:0}
+}
+</style>
 </head>
 <body class="pl-lock">
 <!-- ===== PRELOADER (light) ===== -->
@@ -1225,6 +1239,57 @@ window.addEventListener("load",()=>{if(window.ScrollTrigger)setTimeout(()=>Scrol
   }
 })();
 
+</script>
+
+<script id="sig-fit-js">
+(function(){
+  var sig=null;
+  function pick(){
+    sig=document.querySelector('.f-sig'); if(!sig) return null;
+    var en=sig.querySelector('.sig-en'), ar=sig.querySelector('.sig-ar');
+    var isAr=document.documentElement.getAttribute('lang')==='ar'||document.documentElement.dir==='rtl';
+    var a=isAr?(ar||en):(en||ar);
+    if(a&&getComputedStyle(a).display==='none') a=(a===en?ar:en);
+    return a;
+  }
+  function fit(){
+    var a=pick(); if(!a) return;
+    var target=sig.clientWidth; if(!target) return;
+    sig.style.fontSize='';
+    a.style.width='max-content'; a.style.maxWidth='none';
+    var w=a.scrollWidth||a.getBoundingClientRect().width;
+    if(!w){a.style.width='';a.style.maxWidth='';return;}
+    var cur=parseFloat(getComputedStyle(sig).fontSize)||40;
+    var size=cur*(target/w);
+    for(var i=0;i<3;i++){
+      sig.style.fontSize=size+'px';
+      w=a.scrollWidth||a.getBoundingClientRect().width;
+      if(!w) break;
+      var ratio=target/w;
+      if(Math.abs(ratio-1)<0.004) break;
+      size*=ratio;
+    }
+    sig.style.fontSize=(size*0.997)+'px';
+    a.style.width=''; a.style.maxWidth='';
+  }
+  window.fitFooterSig=fit;
+  var tm; function sched(){clearTimeout(tm); tm=setTimeout(fit,60);}
+  window.addEventListener('resize',sched);
+  window.addEventListener('orientationchange',sched);
+  window.addEventListener('load',fit);
+  if(document.readyState!=='loading') fit(); else document.addEventListener('DOMContentLoaded',fit);
+  if(document.fonts&&document.fonts.ready) document.fonts.ready.then(function(){fit(); setTimeout(fit,350);});
+  [120,450,1000,1800].forEach(function(ms){setTimeout(fit,ms);});
+  function hook(){
+    if(typeof window.setLang==='function'&&!window.setLang.__sigHooked){
+      var orig=window.setLang;
+      var wrapped=function(){var r=orig.apply(this,arguments); requestAnimationFrame(function(){fit(); setTimeout(fit,140); setTimeout(fit,550);}); return r;};
+      wrapped.__sigHooked=true; window.setLang=wrapped;
+    }
+  }
+  hook(); setTimeout(hook,900); setTimeout(hook,2200);
+  try{new MutationObserver(function(){sched();}).observe(document.documentElement,{attributes:true,attributeFilter:['lang','dir']});}catch(e){}
+})();
 </script>
 </body>
 </html>
